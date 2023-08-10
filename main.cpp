@@ -16,14 +16,14 @@ class Tree {
 public:
   typedef std::vector<std::pair<T, unsigned>> InputIt;
   struct Node {
-    std::optional<T> item = std::nullopt;
     unsigned weight = 0;
     bool activated = false;
-    bool hasItem() { return item.has_value(); }
   };
 
   unsigned numItems;
+  unsigned depth;
   std::vector<Node> nodes;
+  std::vector<T> leafValues{};
   typedef std::vector<Node>::iterator TreeIt;
   TreeIt root;
 
@@ -71,34 +71,46 @@ public:
 
   std::mt19937 gen32{std::random_device()()};
 
-  T search(TreeIt node, unsigned roll) {
+  unsigned search(TreeIt node, unsigned roll, int iterations) {
     std::cout << "search " << index(node) << '\n';
-    if (node->hasItem()) {
-      return node->item.value();
+    if (iterations == depth) {
+      return index(node) - nodes.size() / 2;
     } else {
       auto left = getLeftChild(node);
       std::cout << "generated " << roll << " out of " << left->weight << " / " << node->weight << '\n';
       if (roll <= left->weight) {
-        return search(left, roll);
+        return search(left, roll, iterations + 1);
       } else {
-        return search(getRightChild(node), roll - left->weight);
+        return search(getRightChild(node), roll - left->weight, iterations + 1);
       }
     }
   }
 
   void clean(TreeIt node) {
-
+    if (!node->activated) {
+      node->activated = true;
+      if (!isOnLastRow(node)) {
+        clean(getLeftChild(node));
+        clean(getRightChild(node));
+      }
+    }
   }
 
 // public:
-  Tree(const std::vector<std::pair<T, unsigned>>& vec) :
-    numItems(vec.size()),
-    nodes(getNumNodes(vec.size()), Node()),
+  Tree(const std::vector<std::pair<T, unsigned>>& inputVec) :
+    numItems(inputVec.size()),
+    depth(getDepth(inputVec.size())),
+    nodes(getNumNodes(inputVec.size()), Node()),
     root(nodes.begin())
   {
-    auto lastRowBegin = std::next(root, nodes.size() / 2);
-    for (auto inputIt = vec.cbegin(); inputIt < vec.cend(); ++inputIt) {
-      *(lastRowBegin++) = Node{std::optional<T>{inputIt->first}, inputIt->second};
+    leafValues.reserve(inputVec.size());
+    auto lastRowIt = std::next(root, nodes.size() / 2);
+    for (auto inputIt = inputVec.cbegin(); inputIt < inputVec.cend(); ++inputIt) {
+      *(lastRowIt++) = Node{inputIt->second, true};
+      leafValues.push_back(inputIt->first);
+    }
+    for (; lastRowIt < nodes.end(); ++lastRowIt) {
+      *lastRowIt = Node{};
     }
     unsigned totalWeight = fillWeights(root);  // TODO: make member
   }
@@ -109,7 +121,7 @@ public:
     for (int i = 0; i < count; ++i) {
       std::uniform_int_distribution<unsigned> uni(0, root->weight);
       auto roll = uni(gen32);
-      result.push_back(search(root, roll));
+      result.push_back(leafValues[search(root, roll, 0)]);
     }
     clean(root);
     return result;
@@ -117,20 +129,23 @@ public:
 };
 
 template<typename T>
-void print(std::vector<T> vec) {
-  for (const auto& x : vec) {
+void print(std::vector<T> inputVec) {
+  for (const auto& x : inputVec) {
     std::cout << x << ' ';
   }
   std::cout << '\n';
 }
 
-
 int main() {
-  std::vector<std::pair<int, unsigned>> vec{
+  std::vector<std::pair<int, unsigned>> inputVec{
     {0, 50},
-    {1, 1}
+    {1, 40},
+    {3, 120},
+    {4, 140},
+    {5, 141},
+    {8, 10}
   };
-  Tree<int> t(vec);
+  Tree<int> t(inputVec);
   auto vals = t.get(4);
   print(vals);
   // std::cout << t.search) << '\n';
