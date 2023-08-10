@@ -17,16 +17,13 @@
 template <typename T>
 class Tree {
 public:
-  struct Node {
-    unsigned weight = 0;
-  };
-
   using ItemData = std::vector<std::pair<T, unsigned>>;
+  using Weight = unsigned;
   using TreeIt = unsigned;
 
   unsigned numItems;
   unsigned depth;
-  std::vector<Node> nodes;
+  std::vector<Weight> weights;
   ItemData items;
   TreeIt root = 0;
 
@@ -56,36 +53,36 @@ public:
   }
 
   unsigned fillWeights(TreeIt node) {
-    if (node < nodes.size() / 2) {
-      nodes[node].weight = fillWeights(getLeftChild(node)) + fillWeights(getRightChild(node));
+    if (node < weights.size() / 2) {
+      weights[node] = fillWeights(getLeftChild(node)) + fillWeights(getRightChild(node));
     }
-    return nodes[node].weight;
+    return weights[node];
   }
 
   // returns getIndex of result in leafValues
   unsigned search(TreeIt node, unsigned roll, int level) {
-    std::cout << "search " << node << '\n';
+    // std::cout << "search " << node << '\n';
     if (level == depth) {
-      return node - (nodes.size() / 2);
+      return node - (weights.size() / 2);
     } else {
       auto left = getLeftChild(node);
       auto right = getRightChild(node);
-      std::cout << "generated " << roll << " out of " << nodes[left].weight << " / " << nodes[node].weight << '\n';
-      const auto result = roll <= nodes[left].weight ?
+      // std::cout << "generated " << roll << " out of " << weights[left] << " / " << weights[node] << '\n';
+      const auto result = roll <= weights[left] ?
         search(left, roll, level + 1) :
-        search(right, roll - nodes[left].weight, level + 1);
+        search(right, roll - weights[left], level + 1);
       return result;
     }
   }
 
   auto toggle(unsigned i, bool on = true) -> void {
-    const auto leaf = (nodes.size() / 2) + i;
+    const auto leaf = (weights.size() / 2) + i;
     const auto offset = (on ? 1 : -1) * static_cast<int>(items[i].second);
     bubble(leaf, offset);
   }
 
   void bubble(TreeIt node, int offset) {
-    nodes[node].weight += offset;
+    weights[node] += offset;
     if (node > 0) {
       bubble(getParent(node), offset);
     }
@@ -96,11 +93,11 @@ public:
     numItems(inputVec.size()),
     items(inputVec),
     depth(getDepth(inputVec.size())),
-    nodes(getNumNodes(inputVec.size()), Node())
+    weights(getNumNodes(inputVec.size()), 0)
   {
-    auto lastRowIt = nodes.size() / 2;
+    auto lastRowIt = weights.size() / 2;
     for (auto inputIt = inputVec.cbegin(); inputIt < inputVec.cend(); ++inputIt) {
-      nodes[lastRowIt++].weight = inputIt->second;
+      weights[lastRowIt++] = inputIt->second;
     }
     fillWeights(root);
   }
@@ -111,11 +108,9 @@ public:
     std::vector<unsigned> indices;
     indices.reserve(count);
     for (int iterations = 0; iterations < count; ++iterations) {
-      std::uniform_int_distribution<unsigned> dist(1, nodes[root].weight);
+      std::uniform_int_distribution<unsigned> dist(1, weights[root]);
       auto roll = dist(gen32);
-      std::cout << "getting next value ! ! !" << '\n';
       auto i = search(root, roll, 0);
-      std::cout << "got " << i << "(" << items[i].first << ")" << '\n';
       toggle(i, false);
       indices.push_back(i);
     }
@@ -132,9 +127,9 @@ public:
 template<typename T>
 void print(std::vector<T> inputVec) {
   for (const auto& x : inputVec) {
-    std::cout << x << ' ';
+    // std::cout << x << ' ';
   }
-  std::cout << '\n';
+  // std::cout << '\n';
 }
 
 uint64_t timeSinceEpochMillisec() {
@@ -152,13 +147,13 @@ uint64_t measure(const std::function<void()>& f) {
 
 int main() {
   std::vector<std::pair<int, unsigned>> inputVec;
-  for (int i = 1; i < 11; ++i) {
+  for (int i = 1; i < 11000000; ++i) {
     inputVec.emplace_back(i, i);
   }
   Tree t(inputVec);
   auto res = t.get(10);
   print(res);
-  // std::cout << measure([&t]() { t.get(1000); }) << '\n';
+  std::cout << measure([&t]() { t.get(100000); }) << '\n';
   // std::cout << t.search << '\n';
   return 0;
 }
