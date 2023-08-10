@@ -145,15 +145,12 @@ void print(std::vector<T> inputVec) {
 }
 
 int main() {
-  std::vector<std::pair<int, unsigned>> inputVec{
-    {0, 1},
-    {0, 1},
-        {0, 1},
-            {0, 1},
-                {0, 1},
-  };
+  std::vector<std::pair<int, unsigned>> inputVec;
+  for (int i = 0; i < 10125; ++i) {
+    inputVec.emplace_back(i, i);
+  }
   Tree<int> t(inputVec);
-  auto vals = t.get(4);
+  auto vals = t.get(140);
   print(vals);
   // std::cout << t.search << '\n';
   return 0;
