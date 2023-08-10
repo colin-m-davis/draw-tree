@@ -4,6 +4,9 @@
 #include <random>
 #include <iterator>
 #include <algorithm>
+#include <chrono>
+#include <functional>
+#include "rules.cpp"
 
 // template <typename T>
 // concept Ordered = requires(T&& a, T&& b) {
@@ -65,7 +68,7 @@ public:
 
   // returns getIndex of result in leafValues
   unsigned search(TreeIt node, unsigned roll, int level) {
-    std::cout << "search " << getIndex(node) << '\n';
+    // std::cout << "search " << getIndex(node) << '\n';
     if (level == depth) {
       node->activated = false;
       return getIndex(node) - nodes.size() / 2;
@@ -136,6 +139,11 @@ public:
   }
 };
 
+uint64_t timeSinceEpochMillisec() {
+  using namespace std::chrono;
+  return duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+}
+
 template<typename T>
 void print(std::vector<T> inputVec) {
   for (const auto& x : inputVec) {
@@ -144,14 +152,20 @@ void print(std::vector<T> inputVec) {
   std::cout << '\n';
 }
 
+uint64_t measure(const std::function<void()>& f) {
+  auto start = timeSinceEpochMillisec();
+  f();
+  auto end = timeSinceEpochMillisec();
+  return end - start;
+}
+
 int main() {
   std::vector<std::pair<int, unsigned>> inputVec;
   for (int i = 0; i < 10125; ++i) {
     inputVec.emplace_back(i, i);
   }
-  Tree<int> t(inputVec);
-  auto vals = t.get(140);
-  print(vals);
+  Tree t(inputVec);
+  std::cout << measure([&t]() { t.get(10000); }) << '\n';
   // std::cout << t.search << '\n';
   return 0;
 }
