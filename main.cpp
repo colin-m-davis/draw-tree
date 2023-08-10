@@ -19,13 +19,13 @@ class Tree {
 public:
   using ItemData = std::vector<std::pair<T, unsigned>>;
   using Weight = unsigned;
-  using TreeIt = unsigned;
+  using Node = unsigned;
 
   unsigned numItems;
   unsigned depth;
   std::vector<Weight> weights;
   ItemData items;
-  TreeIt root = 0;
+  Node root = 0;
 
   // https://stackoverflow.com/questions/23781506/compile-time-computing-of-number-of-bits-needed-to-encode-n-different-states
   static constexpr unsigned floorLog2(unsigned x) {
@@ -40,19 +40,19 @@ public:
     return (2 << getDepth(numItems)) - 1;
   }
 
-  TreeIt getLeftChild(TreeIt parent) {
+  Node getLeftChild(Node parent) {
     return (parent * 2) + 1;
   }
 
-  TreeIt getRightChild(TreeIt parent) {
+  Node getRightChild(Node parent) {
     return (parent * 2) + 2;
   }
 
-  TreeIt getParent(TreeIt child) {
+  Node getParent(Node child) {
     return (child - 1) / 2;
   }
 
-  unsigned fillWeights(TreeIt node) {
+  unsigned fillWeights(Node node) {
     if (node < weights.size() / 2) {
       weights[node] = fillWeights(getLeftChild(node)) + fillWeights(getRightChild(node));
     }
@@ -60,7 +60,7 @@ public:
   }
 
   // returns getIndex of result in leafValues
-  unsigned search(TreeIt node, unsigned roll, int level) {
+  unsigned search(Node node, unsigned roll, int level) {
     // std::cout << "search " << node << '\n';
     if (level == depth) {
       return node - (weights.size() / 2);
@@ -81,7 +81,7 @@ public:
     bubble(leaf, offset);
   }
 
-  void bubble(TreeIt node, int offset) {
+  void bubble(Node node, int offset) {
     weights[node] += offset;
     if (node > 0) {
       bubble(getParent(node), offset);
