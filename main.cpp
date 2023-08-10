@@ -1,9 +1,9 @@
-#include <concepts>
 #include <vector>
 #include <iostream>
-#include <optional>
 #include <utility>
 #include <random>
+#include <iterator>
+#include <algorithm>
 
 // template <typename T>
 // concept Ordered = requires(T&& a, T&& b) {
@@ -14,7 +14,7 @@
 template <typename T>
 class Tree {
 public:
-  typedef std::vector<std::pair<T, unsigned>> InputIt;
+  typedef std::vector<std::pair<T, unsigned>> ItemData;
   struct Node {
     unsigned weight = 0;
     bool activated = false;
@@ -23,8 +23,8 @@ public:
   unsigned numItems;
   unsigned depth;
   std::vector<Node> nodes;
-  std::vector<T> leafValues{};
-  typedef std::vector<Node>::iterator TreeIt;
+  ItemData items;
+  typedef typename std::vector<Node>::iterator TreeIt;
   TreeIt root;
 
   // https://stackoverflow.com/questions/23781506/compile-time-computing-of-number-of-bits-needed-to-encode-n-different-states
@@ -39,12 +39,12 @@ public:
     return (2 << getDepth(numItems)) - 1;
   }
 
-  unsigned index(TreeIt node) {
+  unsigned getIndex(TreeIt node) {
     return std::distance(root, node);
   }
 
   TreeIt getLeftChild(TreeIt parent) {
-    return std::next(root, index(parent) * 2 + 1);
+    return std::next(root, getIndex(parent) * 2 + 1);
   }
 
   TreeIt getRightChild(TreeIt parent) {
@@ -52,78 +52,90 @@ public:
   }
 
   TreeIt getParent(TreeIt child) {
-    return std::prev(child, (index(child) - 1) / 2);
+    std::cout << getIndex(child) << " <- " << getIndex(std::next(root, (getIndex(child) - 1) / 2)) << '\n';
+    return std::next(root, (getIndex(child) - 1) / 2);
   }
 
   bool isOnLastRow(TreeIt node) {
-    return index(node) >= nodes.size() / 2;
+    return getIndex(node) >= nodes.size() / 2;
   }
 
   unsigned fillWeights(TreeIt node) {
     if (!isOnLastRow(node)) {
       node->weight = fillWeights(getLeftChild(node)) + fillWeights(getRightChild(node));
     }
-    // std::cout << "weight at index " << index(node) << " == " << node->weight << '\n';
-    // std::cout << "is on last row? " << isOnLastRow(node) << '\n';
-    // std::cout << "L: " << distance(root, getLeftChild(node)) << ", R: " << distance(root, getRightChild(node)) << '\n';
+    // std::cout << getIndex(node) << ' ' << node->weight << '\n'; 
     return node->weight;
   }
 
   std::mt19937 gen32{std::random_device()()};
 
-  unsigned search(TreeIt node, unsigned roll, int iterations) {
-    std::cout << "search " << index(node) << '\n';
-    if (iterations == depth) {
-      return index(node) - nodes.size() / 2;
+  // returns getIndex of result in leafValues
+  unsigned search(TreeIt node, unsigned roll, int level) {
+    std::cout << "search " << getIndex(node) << '\n';
+    if (level == depth) {
+      node->activated = false;
+      return getIndex(node) - nodes.size() / 2;
     } else {
       auto left = getLeftChild(node);
-      std::cout << "generated " << roll << " out of " << left->weight << " / " << node->weight << '\n';
-      if (roll <= left->weight) {
-        return search(left, roll, iterations + 1);
-      } else {
-        return search(getRightChild(node), roll - left->weight, iterations + 1);
+      auto right = getRightChild(node);
+      // std::cout << "generated " << roll << " out of " << left->weight << " / " << node->weight << '\n';
+      const auto result = roll <= left->weight ?
+        search(left, roll, level + 1) :
+        search(right, roll - left->weight, level + 1);
+      if (!(left->activated || right->activated)) {
+        node->activated = false;
       }
+      return result;
     }
   }
 
-  void clean(TreeIt node) {
-    if (!node->activated) {
-      node->activated = true;
-      if (!isOnLastRow(node)) {
-        clean(getLeftChild(node));
-        clean(getRightChild(node));
-      }
+  void bubble(TreeIt node, int offset) {
+    node->weight += offset;
+    if (getIndex(node) > 0) {
+      bubble(getParent(node), offset);
     }
   }
 
 // public:
-  Tree(const std::vector<std::pair<T, unsigned>>& inputVec) :
+  Tree(const ItemData& inputVec) :
     numItems(inputVec.size()),
+    items(inputVec),
     depth(getDepth(inputVec.size())),
     nodes(getNumNodes(inputVec.size()), Node()),
     root(nodes.begin())
   {
-    leafValues.reserve(inputVec.size());
     auto lastRowIt = std::next(root, nodes.size() / 2);
     for (auto inputIt = inputVec.cbegin(); inputIt < inputVec.cend(); ++inputIt) {
       *(lastRowIt++) = Node{inputIt->second, true};
-      leafValues.push_back(inputIt->first);
     }
     for (; lastRowIt < nodes.end(); ++lastRowIt) {
       *lastRowIt = Node{};
     }
-    unsigned totalWeight = fillWeights(root);  // TODO: make member
+    fillWeights(root);
   }
 
   std::vector<T> get(unsigned count) {
+    std::vector<unsigned> indices;
+    indices.reserve(count);
+    for (int iterations = 0; iterations < count; ++iterations) {
+      std::uniform_int_distribution<unsigned> dist(0, root->weight);
+      auto roll = dist(gen32);
+      auto i = search(root, roll, 0);
+      const auto leaf = nodes.begin() + (nodes.size() / 2) + i;
+      const auto offset = -static_cast<int>(items[i].second);
+      bubble(leaf, offset);
+      std::cout << "BUBBLE UP DONE\n";
+      indices.push_back(i);
+    }
     std::vector<T> result;
     result.reserve(count);
-    for (int i = 0; i < count; ++i) {
-      std::uniform_int_distribution<unsigned> uni(0, root->weight);
-      auto roll = uni(gen32);
-      result.push_back(leafValues[search(root, roll, 0)]);
+    for (const auto i : indices) {
+      const auto leaf = nodes.begin() + (nodes.size() / 2) + i;
+      const auto offset = items[i].second;
+      bubble(leaf, offset);
+      result.push_back(items[i].first);
     }
-    clean(root);
     return result;
   }
 };
@@ -140,10 +152,34 @@ int main() {
   std::vector<std::pair<int, unsigned>> inputVec{
     {0, 50},
     {1, 40},
+    {2, 83},
     {3, 120},
     {4, 140},
     {5, 141},
-    {8, 10}
+    {0, 50},
+    {1, 40},
+    {2, 83},
+    {3, 120},
+    {4, 140},
+    {5, 141},
+    {0, 50},
+    {1, 40},
+    {2, 83},
+    {3, 120},
+    {4, 140},
+    {5, 141},
+    {0, 50},
+    {1, 40},
+    {2, 83},
+    {3, 120},
+    {4, 140},
+    {5, 141},
+    {0, 50},
+    {1, 40},
+    {2, 83},
+    {3, 120},
+    {4, 140},
+    {5, 141},
   };
   Tree<int> t(inputVec);
   auto vals = t.get(4);
