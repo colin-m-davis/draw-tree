@@ -31,6 +31,7 @@ public:
   static constexpr unsigned floorLog2(unsigned x) {
     return x == 1 ? 0 : 1 + floorLog2(x >> 1);
   }
+
   static constexpr unsigned getDepth(unsigned x) {
     return x == 1 ? 0 : floorLog2(x - 1) + 1;
   }
@@ -52,23 +53,15 @@ public:
   }
 
   TreeIt getParent(TreeIt child) {
-    std::cout << getIndex(child) << " <- " << getIndex(std::next(root, (getIndex(child) - 1) / 2)) << '\n';
     return std::next(root, (getIndex(child) - 1) / 2);
   }
 
-  bool isOnLastRow(TreeIt node) {
-    return getIndex(node) >= nodes.size() / 2;
-  }
-
   unsigned fillWeights(TreeIt node) {
-    if (!isOnLastRow(node)) {
+    if (getIndex(node) < nodes.size() / 2) {
       node->weight = fillWeights(getLeftChild(node)) + fillWeights(getRightChild(node));
     }
-    // std::cout << getIndex(node) << ' ' << node->weight << '\n'; 
     return node->weight;
   }
-
-  std::mt19937 gen32{std::random_device()()};
 
   // returns getIndex of result in leafValues
   unsigned search(TreeIt node, unsigned roll, int level) {
@@ -115,6 +108,14 @@ public:
     fillWeights(root);
   }
 
+  std::mt19937 gen32{std::random_device()()};
+
+  void toggle(unsigned i, bool on = true) {
+    const auto leaf = nodes.begin() + (nodes.size() / 2) + i;
+    const auto offset = (on ? 1 : -1) * static_cast<int>(items[i].second);
+    bubble(leaf, offset);
+  }
+
   std::vector<T> get(unsigned count) {
     std::vector<unsigned> indices;
     indices.reserve(count);
@@ -122,18 +123,13 @@ public:
       std::uniform_int_distribution<unsigned> dist(0, root->weight);
       auto roll = dist(gen32);
       auto i = search(root, roll, 0);
-      const auto leaf = nodes.begin() + (nodes.size() / 2) + i;
-      const auto offset = -static_cast<int>(items[i].second);
-      bubble(leaf, offset);
-      std::cout << "BUBBLE UP DONE\n";
+      toggle(i, false);
       indices.push_back(i);
     }
     std::vector<T> result;
     result.reserve(count);
     for (const auto i : indices) {
-      const auto leaf = nodes.begin() + (nodes.size() / 2) + i;
-      const auto offset = items[i].second;
-      bubble(leaf, offset);
+      toggle(i, true);
       result.push_back(items[i].first);
     }
     return result;
@@ -150,40 +146,15 @@ void print(std::vector<T> inputVec) {
 
 int main() {
   std::vector<std::pair<int, unsigned>> inputVec{
-    {0, 50},
-    {1, 40},
-    {2, 83},
-    {3, 120},
-    {4, 140},
-    {5, 141},
-    {0, 50},
-    {1, 40},
-    {2, 83},
-    {3, 120},
-    {4, 140},
-    {5, 141},
-    {0, 50},
-    {1, 40},
-    {2, 83},
-    {3, 120},
-    {4, 140},
-    {5, 141},
-    {0, 50},
-    {1, 40},
-    {2, 83},
-    {3, 120},
-    {4, 140},
-    {5, 141},
-    {0, 50},
-    {1, 40},
-    {2, 83},
-    {3, 120},
-    {4, 140},
-    {5, 141},
+    {0, 1},
+    {0, 1},
+        {0, 1},
+            {0, 1},
+                {0, 1},
   };
   Tree<int> t(inputVec);
   auto vals = t.get(4);
   print(vals);
-  // std::cout << t.search) << '\n';
+  // std::cout << t.search << '\n';
   return 0;
 }
