@@ -6,6 +6,8 @@
 #include <algorithm>
 #include <chrono>
 #include <functional>
+#include <unordered_set>
+#include <memory>
 #include "rules.cpp"
 
 // template <typename T>
@@ -19,7 +21,7 @@ class Tree {
 public:
   using Weight = unsigned long long;
   using Node = unsigned;
-  using ItemData = std::vector<std::pair<T, Weight>>;
+  using ItemData = std::vector<std::pair<T, unsigned>>;
 
   unsigned numItems;
   unsigned depth;
@@ -29,27 +31,27 @@ public:
   const Node firstLeaf;
 
   // https://stackoverflow.com/questions/23781506/compile-time-computing-of-number-of-bits-needed-to-encode-n-different-states
-  static constexpr unsigned floorLog2(unsigned x) {
+  static constexpr auto floorLog2(unsigned x) -> unsigned {
     return x == 1 ? 0 : 1 + floorLog2(x >> 1);
   }
 
-  static constexpr unsigned getDepth(unsigned x) {
+  static constexpr auto getDepth(unsigned x) -> unsigned {
     return x == 1 ? 0 : floorLog2(x - 1) + 1;
   }
 
-  static constexpr unsigned getNumNodes(unsigned numItems) {
+  static constexpr auto getNumNodes(unsigned numItems) -> Node {
     return 2 << getDepth(numItems);
   }
 
-  constexpr Node getLeftChild(Node parent) {
+  constexpr auto getLeftChild(Node parent) -> Node  {
     return parent * 2;
   }
 
-  constexpr Node getRightChild(Node parent) {
+  constexpr auto getRightChild(Node parent) -> Node {
     return (parent * 2) + 1;
   }
 
-  constexpr Node getParent(Node child) {
+  constexpr auto getParent(Node child) -> Node {
     return child / 2;
   }
 
@@ -60,12 +62,10 @@ public:
   }
 
   // returns getIndex of result in leafValues
-  unsigned search(Node node, unsigned roll) {
-    for (int level = 1; level <= depth; ++level) {
-      std::cout << "search " << node << '\n';
+  auto search(Node node, unsigned roll) -> unsigned {
+    for (int level = 0; level < depth; ++level) {
       auto left = getLeftChild(node);
       auto right = getRightChild(node);
-      std::cout << "generated " << roll << " out of " << weights[left] << " / " << weights[node] << '\n';
       if (roll <= weights[left]) {
         node = left;
       } else {
@@ -77,13 +77,12 @@ public:
       //   search(right, roll - weights[left], level + 1);
       // return result;
     }
-    std::cout << "returning from search: " << node - firstLeaf << '\n';
-    return node - firstLeaf;
+    return node;
   }
 
-  auto toggle(unsigned i, bool on = true) -> void {
-    const auto leaf = firstLeaf + i;
-    const auto offset = (on ? 1 : -1) * static_cast<int>(items[i].second);
+  void toggle(unsigned leafIndex, bool on = true) {
+    const auto leaf = firstLeaf + leafIndex;
+    const auto offset = (on ? 1 : -1) * static_cast<long long>(items[leafIndex].second);
     bubble(leaf, offset);
   }
 
@@ -104,7 +103,6 @@ public:
     weights(getNumNodes(inputVec.size()) + 1, 0),
     firstLeaf(weights.size() / 2)
   {
-    std::cout << getNumNodes(5) << ' ' << firstLeaf << '\n';
     auto leaf = firstLeaf;
     for (auto inputIt = inputVec.cbegin(); inputIt < inputVec.cend(); ++inputIt) {
       weights[leaf++] = inputIt->second;
@@ -118,7 +116,7 @@ public:
     for (int iterations = 0; iterations < count; ++iterations) {
       std::uniform_int_distribution<Weight> dist(1, weights[root]);
       auto roll = dist(gen32);
-      auto i = search(root, roll);
+      auto i = search(root, roll) - firstLeaf;
       toggle(i, false);
       indices.push_back(i);
     }
@@ -135,9 +133,9 @@ public:
 template<typename T>
 void print(std::vector<T> inputVec) {
   for (const auto& x : inputVec) {
-    std::cout << x << ' ';
+    // std::cout << x << ' ';
   }
-  std::cout << '\n';
+  // std::cout << '\n';
 }
 
 uint64_t timeSinceEpochMillisec() {
@@ -152,15 +150,29 @@ uint64_t measure(const std::function<void()>& f) {
   return end - start;
 }
 
-int main() {
-  std::vector<std::pair<int, unsigned long long>> inputVec;
-  for (int i = 1; i < 6; ++i) {
+template <typename T>
+bool validate(std::vector<T> vec) {
+  std::unordered_set<T> items(vec.begin(), vec.end());
+  return vec.size() == items.size();
+}
+
+bool test(int n) {
+  std::cout << "testing " << n << '\n';
+  std::vector<std::pair<int, unsigned>> inputVec;
+  for (int i = 1; i <= n; ++i) {
     inputVec.emplace_back(i, i);
   }
   Tree t(inputVec);
-  auto res = t.get(5);
-  print(res);
-  // std::cout << measure([&t]() { t.get(10); }) << '\n';
-  // std::cout << t.search << '\n';
+  auto res = t.get(n);
+  return validate(res);
+}
+
+int main() {
+  for (int i = 1; i < 2050; ++i) {
+    if (!test(i)) {
+      std::cout << i << '\n';
+      return 1;
+    }
+  }
   return 0;
 }
