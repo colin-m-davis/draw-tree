@@ -37,7 +37,7 @@ public:
   }
 
   static constexpr unsigned getNumNodes(unsigned numItems) {
-    return (2 << getDepth(numItems)) - 1;
+    return (2 << getDepth(numItems));
   }
 
   constexpr Node getLeftChild(Node parent) {
@@ -53,7 +53,7 @@ public:
   }
 
   unsigned fillWeights(Node node) {
-    if (node <= weights.size() / 2) {
+    if (node < weights.size() / 2) {
       weights[node] = fillWeights(getLeftChild(node)) + fillWeights(getRightChild(node));
     }
     return weights[node];
@@ -61,11 +61,11 @@ public:
 
   // returns getIndex of result in leafValues
   unsigned search(Node node, unsigned roll) {
-    for (int level = 0; level < depth; ++level) {
-      // std::cout << "search " << node << '\n';
+    for (int level = 1; level <= depth; ++level) {
+      std::cout << "search " << node << '\n';
       auto left = getLeftChild(node);
       auto right = getRightChild(node);
-      // std::cout << "generated " << roll << " out of " << weights[left] << " / " << weights[node] << '\n';
+      std::cout << "generated " << roll << " out of " << weights[left] << " / " << weights[node] << '\n';
       if (roll <= weights[left]) {
         node = left;
       } else {
@@ -77,7 +77,7 @@ public:
       //   search(right, roll - weights[left], level + 1);
       // return result;
     }
-    // std::cout << "returning from search: " << node - (weights.size() / 2) << '\n';
+    std::cout << "returning from search: " << node - (weights.size() / 2) << '\n';
     return node - (weights.size() / 2);
   }
 
@@ -103,6 +103,7 @@ public:
     depth(getDepth(inputVec.size())),
     weights(getNumNodes(inputVec.size()) + 1, 0)
   {
+    std::cout << getNumNodes(2) << ' ' << getNumNodes(3) << ' ' << getNumNodes(4) << '\n';
     auto lastRowIt = weights.size() / 2;
     for (auto inputIt = inputVec.cbegin(); inputIt < inputVec.cend(); ++inputIt) {
       weights[lastRowIt++] = inputIt->second;
@@ -152,11 +153,11 @@ uint64_t measure(const std::function<void()>& f) {
 
 int main() {
   std::vector<std::pair<int, unsigned long long>> inputVec;
-  for (int i = 0; i < 14; ++i) {
+  for (int i = 1; i < 5; ++i) {
     inputVec.emplace_back(i, i);
   }
   Tree t(inputVec);
-  auto res = t.get(14);
+  auto res = t.get(4);
   print(res);
   // std::cout << measure([&t]() { t.get(10); }) << '\n';
   // std::cout << t.search << '\n';
