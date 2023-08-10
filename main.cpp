@@ -26,6 +26,7 @@ public:
   std::vector<Weight> weights;
   ItemData items;
   static const Node root = 1;
+  const Node firstLeaf;
 
   // https://stackoverflow.com/questions/23781506/compile-time-computing-of-number-of-bits-needed-to-encode-n-different-states
   static constexpr unsigned floorLog2(unsigned x) {
@@ -37,7 +38,7 @@ public:
   }
 
   static constexpr unsigned getNumNodes(unsigned numItems) {
-    return (2 << getDepth(numItems));
+    return 2 << getDepth(numItems);
   }
 
   constexpr Node getLeftChild(Node parent) {
@@ -52,11 +53,10 @@ public:
     return child / 2;
   }
 
-  unsigned fillWeights(Node node) {
-    if (node < weights.size() / 2) {
-      weights[node] = fillWeights(getLeftChild(node)) + fillWeights(getRightChild(node));
+  void fillWeights() {
+    for (Node node = firstLeaf - 1; node > 0; --node) {
+      weights[node] = weights[getLeftChild(node)] + weights[getRightChild(node)];
     }
-    return weights[node];
   }
 
   // returns getIndex of result in leafValues
@@ -77,21 +77,21 @@ public:
       //   search(right, roll - weights[left], level + 1);
       // return result;
     }
-    std::cout << "returning from search: " << node - (weights.size() / 2) << '\n';
-    return node - (weights.size() / 2);
+    std::cout << "returning from search: " << node - firstLeaf << '\n';
+    return node - firstLeaf;
   }
 
   auto toggle(unsigned i, bool on = true) -> void {
-    const auto leaf = (weights.size() / 2) + i;
+    const auto leaf = firstLeaf + i;
     const auto offset = (on ? 1 : -1) * static_cast<int>(items[i].second);
     bubble(leaf, offset);
   }
 
   void bubble(Node node, int offset) {
-    do {
+    while (node > 0) {
       weights[node] += offset;
       node = getParent(node);
-    } while (node > 0);
+    }
   }
 
   std::mt19937 gen32{std::random_device()()};
@@ -101,14 +101,15 @@ public:
     numItems(inputVec.size()),
     items(inputVec),
     depth(getDepth(inputVec.size())),
-    weights(getNumNodes(inputVec.size()) + 1, 0)
+    weights(getNumNodes(inputVec.size()) + 1, 0),
+    firstLeaf(weights.size() / 2)
   {
-    std::cout << getNumNodes(2) << ' ' << getNumNodes(3) << ' ' << getNumNodes(4) << '\n';
-    auto lastRowIt = weights.size() / 2;
+    std::cout << getNumNodes(5) << ' ' << firstLeaf << '\n';
+    auto leaf = firstLeaf;
     for (auto inputIt = inputVec.cbegin(); inputIt < inputVec.cend(); ++inputIt) {
-      weights[lastRowIt++] = inputIt->second;
+      weights[leaf++] = inputIt->second;
     }
-    fillWeights(root);
+    fillWeights();
   }
 
   auto get(unsigned count) -> std::vector<T> {
@@ -153,11 +154,11 @@ uint64_t measure(const std::function<void()>& f) {
 
 int main() {
   std::vector<std::pair<int, unsigned long long>> inputVec;
-  for (int i = 1; i < 5; ++i) {
+  for (int i = 1; i < 6; ++i) {
     inputVec.emplace_back(i, i);
   }
   Tree t(inputVec);
-  auto res = t.get(4);
+  auto res = t.get(5);
   print(res);
   // std::cout << measure([&t]() { t.get(10); }) << '\n';
   // std::cout << t.search << '\n';
