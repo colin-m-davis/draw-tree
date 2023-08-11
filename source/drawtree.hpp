@@ -15,13 +15,14 @@ class DrawTree {
 public:
   using Weight = unsigned long long;
   using Node = unsigned;
+  using Index = unsigned;
   using ItemData = std::vector<unsigned>;
   static constexpr bool TOGGLE_ON = true;
   static constexpr bool TOGGLE_OFF = false;
 
   unsigned numItems;
-  ItemData items;
   unsigned depth;
+  std::vector<unsigned> weights;
   std::vector<Weight> nodes;
   static const Node root = 1;
   const Node firstLeaf;
@@ -58,7 +59,10 @@ public:
   }
 
   // returns getIndex of result in leafValues
-  auto search(Node node, unsigned roll) -> unsigned {
+  auto search() -> Index {
+    auto node = root;
+    std::uniform_int_distribution<Weight> dist(1, nodes[root]);
+    auto roll = dist(gen32);
     for (unsigned level = 0; level < depth; ++level) {
       auto left = getLeftChild(node);
       auto right = getRightChild(node);
@@ -76,10 +80,10 @@ public:
     return node;
   }
 
-  void toggle(unsigned leafIndex, bool toggleOn = true) {
-    const auto leaf = firstLeaf + leafIndex;
-    const auto offset = (toggleOn ? 1 : -1) * static_cast<long long>(items[leafIndex]);
-    bubble(leaf, offset);
+  void toggle(Index leafIndex, bool toggleOn = true) {
+    const Node leafNode = firstLeaf + leafIndex;
+    const auto offset = (toggleOn ? 1 : -1) * static_cast<long long>(weights[leafIndex]);
+    bubble(leafNode, offset);
   }
 
   void bubble(Node node, int offset) {
@@ -92,27 +96,29 @@ public:
   std::mt19937 gen32{std::random_device()()};
 
 // public:
-  DrawTree(const ItemData& inputVec) :
-    numItems(inputVec.size()),
-    items(inputVec),
-    depth(getDepth(inputVec.size())),
-    nodes(getNumNodes(inputVec.size()) + 1, 0),
+  DrawTree(
+    const std::vector<unsigned>& weights
+    // const std::vector<std::vector<unsigned>>& require = {},
+    // const std::vector<std::vector<unsigned>>& cancel = {}
+  ) :
+    numItems(weights.size()),
+    depth(getDepth(weights.size())),
+    weights(weights),
+    nodes(getNumNodes(weights.size()) + 1, 0),
     firstLeaf(nodes.size() / 2)
   {
     auto leaf = firstLeaf;
-    for (auto inputIt = inputVec.cbegin(); inputIt < inputVec.cend(); ++inputIt) {
-      nodes[leaf++] = *inputIt;
+    for (auto it = weights.cbegin(); it < weights.cend(); ++it) {
+      nodes[leaf++] = *it;
     }
     fillWeights();
   }
 
-  auto get(unsigned count) -> std::vector<unsigned> {
-    std::vector<unsigned> indices;
+  auto get(unsigned count = 1) -> std::vector<Index> {
+    std::vector<Index> indices;
     indices.reserve(count);
     for (unsigned iterations = 0; iterations < count; ++iterations) {
-      std::uniform_int_distribution<Weight> dist(1, nodes[root]);
-      auto roll = dist(gen32);
-      auto i = search(root, roll) - firstLeaf;
+      auto i = search() - firstLeaf;
       toggle(i, TOGGLE_OFF);
       indices.push_back(i);
     }

@@ -69,7 +69,10 @@ int main() {
   constexpr unsigned draw = 500000;
   std::mt19937 gen32{std::random_device()()};
   std::vector<unsigned> weights(total);
-  std::iota(weights.begin(), weights.end(), 1);
+  for (auto& w : weights) {
+    std::uniform_int_distribution<unsigned> dist(1, 102);
+    w = dist(gen32);
+  }
   DrawTree t(weights);
   std::cout << measure([&t]() { t.get(draw); }) << '\n';
   std::cout << measure([]() { BobFloydAlgo(draw, total); }) << '\n';
