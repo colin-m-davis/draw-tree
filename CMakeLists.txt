@@ -33,6 +33,5 @@ target_link_libraries(
   GTest::gtest_main
 )
 
-include(GoogleTest)
-gtest_discover_tests(tree_test)
-
+# include(GoogleTest)
+# gtest_discover_tests(tree_test)

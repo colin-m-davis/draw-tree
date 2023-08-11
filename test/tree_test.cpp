@@ -4,9 +4,8 @@
 #include <drawtree.hpp>
 #include <unordered_set>
 
-template<typename T>
-void print(std::vector<T> inputVec) {
-  for (const auto& x : inputVec) {
+void print(auto iterable) {
+  for (const auto& x : iterable) {
     std::cout << x << ' ';
   }
   std::cout << '\n';
@@ -30,15 +29,13 @@ bool validate(std::vector<T> vec) {
   return vec.size() == items.size();
 }
 
-bool test(int n) {
-  std::cout << "testing " << n << '\n';
-  std::vector<unsigned> inputVec;
-  for (int i = 0; i < n; ++i) {
-    inputVec.emplace_back(i);
+bool tester(uint_fast64_t n) {
+  std::vector<uint_fast64_t> inputVec;
+  for (uint_fast64_t i = 0; i < n; ++i) {
+    inputVec.emplace_back((uint_fast64_t)i);
   }
   DrawTree t(inputVec);
   auto res = t.get(n - 1);
-  print(res);
   return validate(res);
 }
 
@@ -57,21 +54,24 @@ std::unordered_set<int> BobFloydAlgo(int sampleSize, int rangeUpperBound) {
   return sample;
 }
 
-
 int main() {
-  // for (int i = 1; i < 10; ++i) {
-  //   if (!test(i)) {
-  //     std::cout << i << '\n';
-  //     return 1;
-  //   }
-  // }
-  constexpr unsigned total = 100000000;
-  constexpr unsigned draw = 500000;
-  std::mt19937 gen32{std::random_device()()};
-  std::vector<unsigned> weights(total);
-  std::iota(weights.begin(), weights.end(), 1);
+  constexpr unsigned total{100000};
+  constexpr unsigned draw{50000};
+  // std::mt19937 gen32{std::random_device()()};
+  std::vector<uint_fast64_t> weights(total);
+  std::iota(weights.begin(), weights.end(), 1ull);
   DrawTree t(weights);
   std::cout << measure([&t]() { t.get(draw); }) << '\n';
   std::cout << measure([]() { BobFloydAlgo(draw, total); }) << '\n';
+  // std::cout << t.nodes[t.root] << '\n';
+  // for (int i = 1; i < 4000; ++i) {
+  //   std::cout << i << '\n';
+  //   if (!tester(i)) {
+  //     exit(1);
+  //   }
+  // }
+  if (!tester(10000ull * 100000ull)) {
+    std::cout << " FAIL!!! " << '\n';
+  }
   return 0;
 }
