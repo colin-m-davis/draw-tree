@@ -65,13 +65,13 @@ int main() {
   //     return 1;
   //   }
   // }
-
+  constexpr unsigned total = 100000000;
+  constexpr unsigned draw = 500000;
   std::mt19937 gen32{std::random_device()()};
-  std::vector<unsigned> weights(1000000);
+  std::vector<unsigned> weights(total);
   std::iota(weights.begin(), weights.end(), 1);
   DrawTree t(weights);
-  std::cout << measure([&t]() { t.get(50000); }) << '\n';
-  std::cout << measure([]() { BobFloydAlgo(50000, 1000000); }) << '\n';
-
+  std::cout << measure([&t]() { t.get(draw); }) << '\n';
+  std::cout << measure([]() { BobFloydAlgo(draw, total); }) << '\n';
   return 0;
 }

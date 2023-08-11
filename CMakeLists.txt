@@ -22,7 +22,7 @@ add_executable(
   test/tree_test.cpp
 )
 target_compile_options(
-  tree_test PRIVATE -Wall -Wextra -Wpedantic -O1
+  tree_test PRIVATE -Wall -Wextra -Wpedantic -O3
 )
 target_include_directories(
   tree_test

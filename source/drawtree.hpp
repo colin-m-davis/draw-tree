@@ -39,15 +39,15 @@ public:
     return 2 << getDepth(numItems);
   }
 
-  constexpr auto getLeftChild(Node parent) -> Node  {
+  static constexpr auto getLeftChild(Node parent) -> Node  {
     return parent * 2;
   }
 
-  constexpr auto getRightChild(Node parent) -> Node {
+  static constexpr auto getRightChild(Node parent) -> Node {
     return (parent * 2) + 1;
   }
 
-  constexpr auto getParent(Node child) -> Node {
+  static constexpr auto getParent(Node child) -> Node {
     return child / 2;
   }
 
