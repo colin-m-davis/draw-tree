@@ -8,21 +8,21 @@
 #include <functional>
 #include <unordered_set>
 #include <memory>
+#include <cassert>
 #include "rules.hpp"
 
 // TODO: convert to random index generator and add wrapper class for T values
 class DrawTree {
 public:
-  using Weight = unsigned long long;
-  using Node = unsigned;
-  using Index = unsigned;
-  using ItemData = std::vector<unsigned>;
+  using Weight = uint_fast64_t;
+  using Index = uint_fast32_t;
+  using Node = uint_fast32_t;
   static constexpr bool TOGGLE_ON = true;
   static constexpr bool TOGGLE_OFF = false;
 
   unsigned numItems;
-  unsigned depth;
-  std::vector<unsigned> weights;
+  std::vector<Weight> weights;
+  Index depth;
   std::vector<Weight> nodes;
   static const Node root = 1;
   const Node firstLeaf;
@@ -40,7 +40,7 @@ public:
     return 2 << getDepth(numItems);
   }
 
-  static constexpr auto getLeftChild(Node parent) -> Node  {
+  static constexpr auto getLeftChild(Node parent) -> Node {
     return parent * 2;
   }
 
@@ -53,63 +53,60 @@ public:
   }
 
   void fillWeights() {
-    for (Node node = firstLeaf - 1; node > 0; --node) {
+    for (Node node = firstLeaf - 1; node >= root; --node) {
       nodes[node] = nodes[getLeftChild(node)] + nodes[getRightChild(node)];
     }
   }
 
   // returns getIndex of result in leafValues
-  auto search() -> Index {
-    auto node = root;
+  auto search(Node node) -> Node {
     std::uniform_int_distribution<Weight> dist(1, nodes[root]);
-    auto roll = dist(gen32);
-    for (unsigned level = 0; level < depth; ++level) {
+    auto roll = dist(gen64);
+    for (Index level = 0; level < depth; ++level) {
       auto left = getLeftChild(node);
       auto right = getRightChild(node);
+      assert(nodes[left] + nodes[right] == nodes[node]);
       if (roll <= nodes[left]) {
         node = left;
       } else {
         roll -= nodes[left];
         node = right;
       }
-      // const auto result = roll <= nodes[left] ?
-      //   search(left, roll, level + 1) :
-      //   search(right, roll - nodes[left], level + 1);
-      // return result;
     }
     return node;
   }
 
-  void toggle(Index leafIndex, bool toggleOn = true) {
-    const Node leafNode = firstLeaf + leafIndex;
-    const auto offset = (toggleOn ? 1 : -1) * static_cast<long long>(weights[leafIndex]);
-    bubble(leafNode, offset);
+  template <bool direction = TOGGLE_ON>
+  void toggle(Index leafIndex) {
+    const Node leaf = firstLeaf + leafIndex;
+    bubble<direction>(leaf, weights[leafIndex]);
   }
 
-  void bubble(Node node, int offset) {
-    while (node > 0) {
-      nodes[node] += offset;
+  template <bool add = true>
+  void bubble(Node node, Weight offset) {
+    while (node) {
+      if constexpr (add) {
+        nodes[node] += offset;
+      } else {
+        nodes[node] -= offset;
+      }
       node = getParent(node);
     }
   }
 
-  std::mt19937 gen32{std::random_device()()};
+  std::mt19937_64 gen64{std::random_device()()};
 
 // public:
-  DrawTree(
-    const std::vector<unsigned>& weights
-    // const std::vector<std::vector<unsigned>>& require = {},
-    // const std::vector<std::vector<unsigned>>& cancel = {}
-  ) :
-    numItems(weights.size()),
-    depth(getDepth(weights.size())),
-    weights(weights),
-    nodes(getNumNodes(weights.size()) + 1, 0),
+  DrawTree(auto&& w) :
+    numItems(w.size()),
+    weights(std::forward<decltype(w)>(w)),
+    depth(getDepth(w.size())),
+    nodes(getNumNodes(w.size()) + 1, 0),
     firstLeaf(nodes.size() / 2)
   {
     auto leaf = firstLeaf;
-    for (auto it = weights.cbegin(); it < weights.cend(); ++it) {
-      nodes[leaf++] = *it;
+    for (auto inputIt = w.cbegin(); inputIt < w.cend(); ++inputIt) {
+      nodes[leaf++] = *inputIt;
     }
     fillWeights();
   }
@@ -118,12 +115,12 @@ public:
     std::vector<Index> indices;
     indices.reserve(count);
     for (unsigned iterations = 0; iterations < count; ++iterations) {
-      auto i = search() - firstLeaf;
-      toggle(i, TOGGLE_OFF);
+      auto i = search(root) - firstLeaf;
+      toggle<TOGGLE_OFF>(i);
       indices.push_back(i);
     }
     for (const auto i : indices) {
-      toggle(i, TOGGLE_ON);
+      toggle<TOGGLE_ON>(i);
     }
     return indices; 
   }
