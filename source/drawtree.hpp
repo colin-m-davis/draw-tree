@@ -59,7 +59,9 @@ public:
   }
 
   // returns getIndex of result in leafValues
-  auto search(Node node, Weight roll) -> Node {
+  auto search(Node node) -> Node {
+    std::uniform_int_distribution<Weight> dist(1, nodes[root]);
+    auto roll = dist(gen64);
     for (Index level = 0; level < depth; ++level) {
       auto left = getLeftChild(node);
       auto right = getRightChild(node);
@@ -70,18 +72,14 @@ public:
         roll -= nodes[left];
         node = right;
       }
-      // const auto result = roll <= nodes[left] ?
-      //   search(left, roll, level + 1) :
-      //   search(right, roll - nodes[left], level + 1);
-      // return result;
     }
     return node;
   }
 
-  template <bool on = TOGGLE_ON>
+  template <bool direction = TOGGLE_ON>
   void toggle(Index leafIndex) {
     const Node leaf = firstLeaf + leafIndex;
-    bubble<on>(leaf, weights[leafIndex]);
+    bubble<direction>(leaf, weights[leafIndex]);
   }
 
   template <bool add = true>
@@ -117,9 +115,7 @@ public:
     std::vector<unsigned> indices;
     indices.reserve(count);
     for (unsigned iterations = 0; iterations < count; ++iterations) {
-      std::uniform_int_distribution<Weight> dist(1, nodes[root]);
-      auto roll = dist(gen64);
-      auto i = search(root, roll) - firstLeaf;
+      auto i = search(root) - firstLeaf;
       toggle<TOGGLE_OFF>(i);
       indices.push_back(i);
     }

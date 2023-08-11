@@ -39,39 +39,23 @@ bool tester(uint_fast64_t n) {
   return validate(res);
 }
 
-std::unordered_set<int> BobFloydAlgo(int sampleSize, int rangeUpperBound) {
-  std::unordered_set<int> sample;
-  std::default_random_engine generator;
-
-  for(int d = rangeUpperBound - sampleSize; d < rangeUpperBound; d++)
-  {
-        int t = std::uniform_int_distribution<>(0, d)(generator);
-        if (sample.find(t) == sample.end() )
-            sample.insert(t);
-        else
-            sample.insert(d);
-  }
-  return sample;
-}
-
 int main() {
-  constexpr unsigned total{100000};
+  constexpr unsigned total{1000000};
   constexpr unsigned draw{50000};
   // std::mt19937 gen32{std::random_device()()};
   std::vector<uint_fast64_t> weights(total);
   std::iota(weights.begin(), weights.end(), 1ull);
   DrawTree t(weights);
-  std::cout << measure([&t]() { t.get(draw); }) << '\n';
-  std::cout << measure([]() { BobFloydAlgo(draw, total); }) << '\n';
-  // std::cout << t.nodes[t.root] << '\n';
-  // for (int i = 1; i < 4000; ++i) {
-  //   std::cout << i << '\n';
-  //   if (!tester(i)) {
-  //     exit(1);
-  //   }
-  // }
-  if (!tester(10000ull * 100000ull)) {
-    std::cout << " FAIL!!! " << '\n';
+  std::cout << measure([&t]() {
+    for (int i = 0; i < 10; ++i) {
+      t.get(draw);
+    }
+  }) << '\n';
+  for (int i = 1; i < 4000; ++i) {
+    if (!tester(i)) {
+    std::cout << i << '\n';
+      exit(1);
+    }
   }
   return 0;
 }
